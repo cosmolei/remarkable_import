@@ -1,0 +1,6 @@
+{
+  "host": "10.11.99.1",
+  "username": "root",
+  "password": "your-password",
+  "xochitl_path": "/home/root/.local/share/remarkable/xochitl"
+}
