@@ -5,6 +5,7 @@
 ## 概述
 
 `reMarkable Import` 用于通过 SSH 管理 reMarkable 平板上的文档和目录。项目现在对外暴露的是“解析后的逻辑文件树”，而不是底层 `.metadata` 文件，因此也更适合作为后续 Web 界面的基础。
+理论上适配 reMarkable 全系产品，但目前只在 reMarkable Paper Pro Move 上测试过。
 
 ## 功能
 

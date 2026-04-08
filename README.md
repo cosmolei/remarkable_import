@@ -5,6 +5,7 @@
 ## Overview
 
 `reMarkable Import` manages documents and folders on a reMarkable tablet over SSH. The project now exposes a logical file model instead of raw metadata files, which makes it a better base for a future web UI.
+In theory it should work across the full reMarkable product line, but it has only been tested on the reMarkable Paper Pro Move.
 
 ## Features
 
