@@ -4,16 +4,18 @@
 
 ## 概述
 
-`reMarkable Import` 用于通过 SSH 向 reMarkable 平板上传 PDF 和 EPUB 文件，也支持创建目录、创建多级子目录，以及把当前目录结构按树形方式列出来。
+`reMarkable Import` 用于通过 SSH 管理 reMarkable 平板上的文档和目录。项目现在对外暴露的是“解析后的逻辑文件树”，而不是底层 `.metadata` 文件，因此也更适合作为后续 Web 界面的基础。
 
 ## 功能
 
-- 上传 `.pdf` 和 `.epub` 文档到 reMarkable。
-- 为上传文档设置自定义显示名称。
-- 通过 UUID 将文档上传到指定父目录。
-- 在根目录或已有目录下创建新目录。
-- 一条命令创建多级子目录，例如 `Books/Math/Algebra`。
-- 按父子关系树形列出目录。
+- 列出目录和文档组成的逻辑树。
+- 创建目录或多级目录路径。
+- 上传 `.pdf` 和 `.epub` 文档。
+- 下载文档。
+- 删除文档。
+- 删除目录，支持递归删除非空目录。
+- 将文档或目录移动到另一个目录。
+- 支持用 UUID 或逻辑路径定位目标。
 
 ## 运行要求
 
@@ -24,12 +26,12 @@
 ## 安装
 
 ```bash
-pip install paramiko
+pip install -r requirements.txt
 ```
 
 ## 配置
 
-在项目根目录创建 `config.json`：
+先将 `config.example.json` 复制为 `config.json`，再填写你自己的连接信息：
 
 ```json
 {
@@ -47,80 +49,182 @@ pip install paramiko
 - `password`：SSH 密码
 - `xochitl_path`：reMarkable 上 `xochitl` 存储目录的路径
 
+`config.json` 已加入 Git 忽略，不会被提交。
+
 ## 用法
 
 通用语法：
 
 ```bash
-python upload.py [file] [options]
+python upload.py <command> [options]
 ```
 
-### 上传文档
+### 列出逻辑目录树
 
 ```bash
-python upload.py ./sample.pdf
+python upload.py list
 ```
 
-默认会使用“文件名去掉扩展名”作为显示名称。
-
-### 使用自定义显示名称上传
+只显示目录：
 
 ```bash
-python upload.py ./sample.pdf --name "Linear Algebra Notes"
+python upload.py list --folders-only
 ```
 
-### 上传到指定目录
+同时显示 UUID：
 
 ```bash
-python upload.py ./sample.pdf --parent 12345678-1234-1234-1234-123456789abc
-```
-
-如果你需要目录 UUID，可以先执行 `--list-folders`。
-
-### 以树形结构列出目录
-
-```bash
-python upload.py --list-folders
+python upload.py list --show-uuid
 ```
 
 输出示例：
 
 ```text
-Folders on device:
 (root)
-├─ Books [11111111-1111-1111-1111-111111111111]
-│  └─ Math [22222222-2222-2222-2222-222222222222]
-└─ Notes [33333333-3333-3333-3333-333333333333]
+├─ Books/
+│  ├─ Math/
+│  │  └─ Linear Algebra (pdf)
+│  └─ Physics (epub)
+└─ Notes/
 ```
 
 ### 创建目录
 
-```bash
-python upload.py --mkdir Books
-```
-
-### 在指定父目录下创建子目录
+在根目录创建一个目录：
 
 ```bash
-python upload.py --mkdir Math --parent 11111111-1111-1111-1111-111111111111
+python upload.py mkdir Books
 ```
 
-### 一条命令创建多级目录
+一条命令创建多级目录：
 
 ```bash
-python upload.py --mkdir Books/Math/Algebra
+python upload.py mkdir Books/Math/Algebra
 ```
 
-如果路径中的某一级目录在同一父目录下已经存在，脚本会直接复用它，只创建缺失的层级。
+通过 UUID 或逻辑路径指定父目录：
+
+```bash
+python upload.py mkdir Algebra --parent Books/Math
+```
+
+### 上传文档
+
+上传到根目录：
+
+```bash
+python upload.py upload ./sample.pdf
+```
+
+上传时指定显示名称：
+
+```bash
+python upload.py upload ./sample.pdf --name "Linear Algebra Notes"
+```
+
+按逻辑路径上传到指定目录：
+
+```bash
+python upload.py upload ./sample.pdf --parent Books/Math
+```
+
+按 UUID 上传到指定目录：
+
+```bash
+python upload.py upload ./sample.pdf --parent 12345678-1234-1234-1234-123456789abc
+```
+
+### 下载文档
+
+按逻辑路径下载：
+
+```bash
+python upload.py download Books/Math/"Linear Algebra Notes"
+```
+
+下载到指定本地文件：
+
+```bash
+python upload.py download Books/Physics ./downloads/physics.epub
+```
+
+### 删除文档或目录
+
+删除文档：
+
+```bash
+python upload.py delete Books/Math/"Linear Algebra Notes"
+```
+
+删除空目录：
+
+```bash
+python upload.py delete Books/Math/Algebra
+```
+
+递归删除非空目录：
+
+```bash
+python upload.py delete Books --recursive
+```
+
+### 移动文档或目录
+
+把文档移动到另一个目录：
+
+```bash
+python upload.py move Books/Physics Notes
+```
+
+把目录移动到另一个目录：
+
+```bash
+python upload.py move Books/Math Archive
+```
+
+## Web 界面
+
+启动本地 Web 界面：
+
+```bash
+python webapp.py
+```
+
+然后打开 `http://127.0.0.1:8000`。
+
+当前 Web 界面支持：
+
+- 从根目录开始的单目录浏览
+- 点击目录进入下一级，并可返回上级
+- 通过拖拽或文件选择器批量上传到当前目录
+- 在当前目录内创建子目录
+- 重命名目录或文档
+- 通过列表复选框进行批量删除
+- 基于当前选中项进行下载、移动和重命名
+- 上传进度展示
+- 英文/中文界面切换
+
+也可以自定义监听地址和端口：
+
+```bash
+python webapp.py --host 127.0.0.1 --port 8765
+```
 
 ## 说明
 
-- 上传文档或创建目录后，脚本会重启 `xochitl` 服务，让变更显示在设备上。
-- 当前仅支持 `.pdf` 和 `.epub`。
-- 目前目录选择仍然使用 UUID，不支持直接传目录路径。
+- CLI 基于元数据解析出的逻辑树工作，而不是直接展示底层 `.metadata` 文件名。
+- `list` 默认不显示 UUID，输出会更接近真实目录视图。
+- 写操作完成后，脚本会重启 `xochitl` 服务，让变更显示在设备上。
+- 在重启 `xochitl` 前，客户端会先清理该 systemd 单元的 failed 状态，减少高频操作时触发启动限流的概率。
+- 当前仅支持上传 `.pdf` 和 `.epub`。
+- 如果逻辑路径存在歧义，脚本会直接报错，不会自行猜测。
 
-## 项目文件
+## 项目结构
 
-- `upload.py`：主脚本
-- `config.json`：本地连接配置
-
+- `upload.py`：CLI 入口
+- `remarkable/client.py`：逻辑树解析、上传、下载、移动、删除、建目录等核心能力
+- `webapp.py`：FastAPI Web 服务
+- `templates/` 和 `static/`：Web 模板与静态资源
+- `requirements.txt`：Python 依赖清单
+- `config.example.json`：配置模板
+- `config.json`：本地配置，已被 Git 忽略

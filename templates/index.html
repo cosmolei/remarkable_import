@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>reMarkable Control Panel</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=Manrope:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/app.css">
+</head>
+<body>
+  <div class="grain"></div>
+  <main class="shell">
+    <header class="topbar">
+      <div class="topbar-actions">
+        <button id="langToggle" class="ghost small">中文</button>
+        <button id="refreshButton" class="ghost small" data-i18n="refresh">Refresh</button>
+      </div>
+    </header>
+
+    <section class="browser panel">
+      <div class="browser-head">
+        <div class="nav-strip">
+          <button id="backButton" class="ghost small" type="button" data-i18n="back">Back</button>
+          <button id="upButton" class="ghost small" type="button" data-i18n="up">Up</button>
+          <div id="pathBar" class="path-bar"></div>
+        </div>
+        <div class="toolbar">
+          <label class="toolbar-button file-button">
+            <input id="fileInput" type="file" accept=".pdf,.epub" multiple hidden>
+            <span data-i18n="upload">Upload</span>
+          </label>
+          <button id="createFolderButton" class="toolbar-button" type="button" data-i18n="newFolder">New Folder</button>
+          <button id="renameButton" class="toolbar-button" type="button" data-i18n="rename">Rename</button>
+          <button id="moveButton" class="toolbar-button" type="button" data-i18n="move">Move</button>
+          <button id="downloadButton" class="toolbar-button" type="button" data-i18n="download">Download</button>
+          <button id="deleteButton" class="toolbar-button danger" type="button" data-i18n="delete">Delete</button>
+        </div>
+      </div>
+
+      <div id="dropZone" class="drop-zone" data-i18n="dropZone">Drop PDF or EPUB here to upload into the current folder</div>
+      <div id="uploadProgress" class="upload-progress hidden">
+        <div class="upload-progress-head">
+          <span id="uploadProgressLabel">Uploading...</span>
+          <span id="uploadProgressValue">0%</span>
+        </div>
+        <div class="progress-track">
+          <div id="uploadProgressBar" class="progress-bar"></div>
+        </div>
+      </div>
+
+      <div class="current-folder">
+        <div>
+          <p class="label" data-i18n="currentFolder">Current Folder</p>
+          <p id="currentFolderName" class="folder-name">/</p>
+        </div>
+        <div class="folder-meta">
+          <span id="itemCount">0 items</span>
+          <span id="status" class="status">Idle</span>
+        </div>
+      </div>
+
+      <div class="list-head">
+        <span></span>
+        <span data-i18n="nameCol">Name</span>
+        <span data-i18n="typeCol">Type</span>
+        <span data-i18n="createdCol">Created</span>
+        <span data-i18n="sizeCol">Size</span>
+      </div>
+      <div id="itemList" class="item-list"></div>
+    </section>
+  </main>
+
+  <dialog id="folderDialog" class="dialog">
+    <form id="folderForm" method="dialog" class="dialog-card">
+      <h2 data-i18n="newFolder">New Folder</h2>
+      <p class="dialog-text" data-i18n="newFolderHint">Create a folder inside the current directory.</p>
+      <input id="folderNameInput" type="text" placeholder="Books" required>
+      <div class="dialog-actions">
+        <button class="ghost" type="button" id="folderCancel" data-i18n="cancel">Cancel</button>
+        <button class="primary" type="submit" data-i18n="create">Create</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="renameDialog" class="dialog">
+    <form id="renameForm" method="dialog" class="dialog-card">
+      <h2 data-i18n="rename">Rename</h2>
+      <p class="dialog-text" data-i18n="renameHint">Change the name of the selected item.</p>
+      <div id="renameTargetLabel" class="move-target-label"></div>
+      <input id="renameInput" type="text" required>
+      <div class="dialog-actions">
+        <button class="ghost" type="button" id="renameCancel" data-i18n="cancel">Cancel</button>
+        <button class="primary" type="submit" data-i18n="save">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="moveDialog" class="dialog">
+    <form id="moveForm" method="dialog" class="dialog-card">
+      <h2 data-i18n="move">Move</h2>
+      <p class="dialog-text" data-i18n="moveHint">Choose a destination folder for the selected item.</p>
+      <div id="moveTargetLabel" class="move-target-label"></div>
+      <div id="moveDestinationList" class="move-destination-list"></div>
+      <div class="dialog-actions">
+        <button class="ghost" type="button" id="moveCancel" data-i18n="cancel">Cancel</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="loadingOverlay" class="loading-overlay hidden" aria-live="polite" aria-busy="true">
+    <div class="loading-card">
+      <div class="spinner"></div>
+      <div id="loadingText">Loading...</div>
+    </div>
+  </div>
+
+  <script src="/static/app.js" defer></script>
+</body>
+</html>

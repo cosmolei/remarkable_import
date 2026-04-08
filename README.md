@@ -4,16 +4,18 @@
 
 ## Overview
 
-`reMarkable Import` uploads PDF and EPUB files to a reMarkable tablet over SSH. It can also create folders, create nested folders, and print the current folder structure as a tree.
+`reMarkable Import` manages documents and folders on a reMarkable tablet over SSH. The project now exposes a logical file model instead of raw metadata files, which makes it a better base for a future web UI.
 
 ## Features
 
-- Upload `.pdf` and `.epub` documents to the reMarkable.
-- Set a custom display name for uploaded documents.
-- Upload documents into a specific parent folder by UUID.
-- Create a folder at root or inside another folder.
-- Create nested folders in one command, for example `Books/Math/Algebra`.
-- List folders as a tree based on parent-child relationships.
+- List the logical tree of folders and documents.
+- Create folders or nested folder paths.
+- Upload `.pdf` and `.epub` documents.
+- Download documents.
+- Delete documents.
+- Delete folders, including recursive delete for non-empty folders.
+- Move documents or folders into another folder.
+- Resolve targets by UUID or logical path.
 
 ## Requirements
 
@@ -24,12 +26,12 @@
 ## Installation
 
 ```bash
-pip install paramiko
+pip install -r requirements.txt
 ```
 
 ## Configuration
 
-Create a `config.json` file in the project root:
+Copy `config.example.json` to `config.json`, then fill in your own connection details:
 
 ```json
 {
@@ -42,85 +44,187 @@ Create a `config.json` file in the project root:
 
 Field description:
 
-- `host`: IP address or hostname of the reMarkable.
-- `username`: SSH username.
-- `password`: SSH password.
-- `xochitl_path`: Path to the reMarkable `xochitl` storage directory.
+- `host`: IP address or hostname of the reMarkable
+- `username`: SSH username
+- `password`: SSH password
+- `xochitl_path`: Path to the reMarkable `xochitl` storage directory
+
+`config.json` is ignored by Git so your local password is not committed.
 
 ## Usage
 
 General syntax:
 
 ```bash
-python upload.py [file] [options]
+python upload.py <command> [options]
 ```
 
-### Upload a document
+### List the logical tree
 
 ```bash
-python upload.py ./sample.pdf
+python upload.py list
 ```
 
-This uploads the file using its filename without extension as the visible name.
-
-### Upload with a custom display name
+Show folders only:
 
 ```bash
-python upload.py ./sample.pdf --name "Linear Algebra Notes"
+python upload.py list --folders-only
 ```
 
-### Upload into a specific folder
+Show UUIDs together with logical names:
 
 ```bash
-python upload.py ./sample.pdf --parent 12345678-1234-1234-1234-123456789abc
-```
-
-Use `--list-folders` first if you need the folder UUID.
-
-### List folders as a tree
-
-```bash
-python upload.py --list-folders
+python upload.py list --show-uuid
 ```
 
 Example output:
 
 ```text
-Folders on device:
 (root)
-├─ Books [11111111-1111-1111-1111-111111111111]
-│  └─ Math [22222222-2222-2222-2222-222222222222]
-└─ Notes [33333333-3333-3333-3333-333333333333]
+├─ Books/
+│  ├─ Math/
+│  │  └─ Linear Algebra (pdf)
+│  └─ Physics (epub)
+└─ Notes/
 ```
 
-### Create a folder
+### Create folders
+
+Create a folder at root:
 
 ```bash
-python upload.py --mkdir Books
+python upload.py mkdir Books
 ```
 
-### Create a subfolder under a specific parent
+Create nested folders in one command:
 
 ```bash
-python upload.py --mkdir Math --parent 11111111-1111-1111-1111-111111111111
+python upload.py mkdir Books/Math/Algebra
 ```
 
-### Create nested folders in one command
+Create under an existing parent by UUID or logical path:
 
 ```bash
-python upload.py --mkdir Books/Math/Algebra
+python upload.py mkdir Algebra --parent Books/Math
 ```
 
-If a folder in the path already exists under the same parent, the script reuses it and only creates the missing levels.
+### Upload a document
+
+Upload to root:
+
+```bash
+python upload.py upload ./sample.pdf
+```
+
+Upload with a custom visible name:
+
+```bash
+python upload.py upload ./sample.pdf --name "Linear Algebra Notes"
+```
+
+Upload into a folder by logical path:
+
+```bash
+python upload.py upload ./sample.pdf --parent Books/Math
+```
+
+Upload into a folder by UUID:
+
+```bash
+python upload.py upload ./sample.pdf --parent 12345678-1234-1234-1234-123456789abc
+```
+
+### Download a document
+
+Download using a logical path:
+
+```bash
+python upload.py download Books/Math/"Linear Algebra Notes"
+```
+
+Download to a specific local file path:
+
+```bash
+python upload.py download Books/Physics ./downloads/physics.epub
+```
+
+### Delete a document or folder
+
+Delete a document:
+
+```bash
+python upload.py delete Books/Math/"Linear Algebra Notes"
+```
+
+Delete an empty folder:
+
+```bash
+python upload.py delete Books/Math/Algebra
+```
+
+Delete a non-empty folder recursively:
+
+```bash
+python upload.py delete Books --recursive
+```
+
+### Move a document or folder
+
+Move a document into another folder:
+
+```bash
+python upload.py move Books/Physics Notes
+```
+
+Move a folder into another folder:
+
+```bash
+python upload.py move Books/Math Archive
+```
+
+## Web UI
+
+Start the local web interface:
+
+```bash
+python webapp.py
+```
+
+Then open `http://127.0.0.1:8000`.
+
+The web UI currently supports:
+
+- Single-directory browsing, starting at root
+- Enter folder on click and go back to parent
+- Batch upload into the current folder by drag-and-drop or file picker
+- In-page folder creation in the current folder
+- Rename folders or documents
+- Batch delete using row checkboxes
+- Download, move, and rename based on the selected item
+- Upload progress feedback
+- English and Chinese UI switching
+
+You can also choose a custom bind address and port:
+
+```bash
+python webapp.py --host 127.0.0.1 --port 8765
+```
 
 ## Notes
 
-- The script restarts the `xochitl` service after uploading a document or creating folders so changes appear on the device.
-- Only `.pdf` and `.epub` are supported.
-- Folder selection currently uses UUIDs, not folder paths.
+- The CLI works on the logical tree reconstructed from item metadata, not on raw `.metadata` filenames.
+- By default, `list` hides UUIDs so the output stays focused on the logical structure.
+- After write operations, the script restarts the `xochitl` service so changes appear on the device.
+- Before restarting `xochitl`, the client resets the unit's failed state to reduce the chance of hitting the device's systemd start limit during repeated operations.
+- Only `.pdf` and `.epub` uploads are supported.
+- Ambiguous logical paths are rejected instead of guessing.
 
-## Project Files
+## Project Structure
 
-- `upload.py`: Main script
-- `config.json`: Local connection configuration
-
+- `upload.py`: CLI entry point
+- `remarkable/client.py`: Core logical operations for list, upload, download, move, delete, and mkdir
+- `webapp.py`: FastAPI web server
+- `templates/` and `static/`: Web UI templates and assets
+- `requirements.txt`: Python dependencies
+- `config.example.json`: Config template
+- `config.json`: Local config, ignored by Git
